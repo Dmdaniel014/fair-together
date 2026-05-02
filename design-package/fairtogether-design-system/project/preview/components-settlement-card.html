@@ -1,0 +1,42 @@
+<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8"/>
+<title>Settlement Card</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  body { margin:0; padding:20px; background:#F0F4F8; font-family:var(--font-sans); }
+  .card { background:#fff; border-radius:20px; padding:16px; box-shadow:0 2px 8px rgba(100,116,139,0.06); border:1px solid var(--border-dim); }
+  .top { display:flex; align-items:flex-start; gap:12px; margin-bottom:10px; flex-direction:row-reverse; }
+  .logo { width:40px; height:40px; border-radius:10px; background:#E31019; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex-shrink:0; }
+  .title { flex:1; }
+  .title h3 { margin:0; font-weight:700; font-size:15px; color:#0F172A; text-align:right; line-height:1.35; }
+  .menu { color:#94A3B8; font-size:18px; }
+  .badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px; font-weight:600; font-size:11px; background:#D1FAE5; color:#059669; margin-bottom:10px; }
+  .badge::before { content:''; width:5px; height:5px; background:#059669; border-radius:999px; }
+  p { margin:0 0 12px; font-size:13px; line-height:1.55; color:#334155; text-align:right; }
+  .dataRow { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .payout { font-family:var(--font-mono); font-weight:700; font-size:15px; color:#DC2626; direction:ltr; text-align:right; }
+  .date { font-family:var(--font-mono); font-size:12px; color:#1A56DB; }
+  .cta { width:100%; height:44px; background:#1A56DB; color:#fff; border:0; border-radius:12px; font-family:var(--font-sans); font-weight:600; font-size:15px; box-shadow:0 4px 12px rgba(26,86,219,0.20); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="logo">ש</div>
+      <div class="title">
+        <h3>שופרסל — עיגול יתר במחירי מבצע</h3>
+      </div>
+      <div class="menu">⋯</div>
+    </div>
+    <span class="badge">התאמה חזקה · משלם</span>
+    <p>לקוחות שופרסל שחויבו במחירים גבוהים ממחירי המבצע בתקופה 01/2023–09/2024 עשויים להיות זכאים להחזר.</p>
+    <div class="dataRow">
+      <span class="payout">₪ 300 - 100</span>
+      <span class="date">31.12.2025</span>
+    </div>
+    <button class="cta">בדיקת זכאות</button>
+  </div>
+</body>
+</html>

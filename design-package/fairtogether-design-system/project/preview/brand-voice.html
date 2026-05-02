@@ -1,0 +1,28 @@
+<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8"/>
+<title>Brand · Tone & voice</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  body { margin:0; padding:24px; background:#fff; font-family:var(--font-sans); display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .cell { display:flex; flex-direction:column; gap:6px; padding:12px 14px; border-radius:12px; border:1px solid var(--border-dim); background:#fff; }
+  .good { border-color:rgba(5,150,105,0.35); }
+  .bad { border-color:rgba(220,38,38,0.3); background:#FEF2F2; }
+  .tag { font-family:var(--font-mono); font-size:10px; display:flex; align-items:center; gap:5px; }
+  .good .tag { color:#059669; }
+  .bad .tag { color:#DC2626; }
+  .he { font-size:14px; color:#0F172A; font-weight:500; text-align:right; direction:rtl; }
+  .bad .he { text-decoration:line-through; color:#991B1B; }
+  .note { font-family:var(--font-mono); font-size:10px; color:var(--color-fg3); }
+</style>
+</head>
+<body>
+  <div class="cell good"><div class="tag">✓ use</div><div class="he">אתה יכול להגיש תביעה</div><div class="note">2nd person, informal</div></div>
+  <div class="cell bad"><div class="tag">✗ avoid</div><div class="he">ניתן להגיש תביעה</div><div class="note">passive, bureaucratic</div></div>
+  <div class="cell good"><div class="tag">✓ use</div><div class="he">45 אנשים הצטרפו</div><div class="note">concrete count</div></div>
+  <div class="cell bad"><div class="tag">✗ avoid</div><div class="he">קהילה פעילה</div><div class="note">abstract vibes</div></div>
+  <div class="cell good"><div class="tag">✓ use</div><div class="he">יוזמת תביעה</div><div class="note">right stage name</div></div>
+  <div class="cell bad"><div class="tag">✗ avoid</div><div class="he">תובענה ייצוגית</div><div class="note">wrong — pre-action</div></div>
+</body>
+</html>

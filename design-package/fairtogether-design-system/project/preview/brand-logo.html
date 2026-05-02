@@ -1,0 +1,46 @@
+<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8"/>
+<title>Brand · Logo & wordmark</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  body { margin:0; padding:0; display:grid; grid-template-columns:1.3fr 1fr 1fr; gap:0; font-family:var(--font-sans); }
+  .panel { padding:22px 24px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; min-height:200px; }
+  .a { background:#fff; }
+  .b { background:var(--gradient-sky); }
+  .c { background:#0F172A; }
+  .logo-lg { width:200px; height:auto; display:block; }
+  .logo-md { width:140px; height:auto; display:block; }
+  .logo-sm { width:88px; height:auto; display:block; filter: brightness(0) invert(1); }
+  .mark { display:flex; align-items:center; gap:12px; }
+  .mark h2 {
+    margin:0; font-family:var(--font-sans); font-weight:700;
+    font-size:22px; color:#0F172A; letter-spacing:-0.3px; direction:ltr;
+  }
+  .b .mark h2 { color:#0F172A; }
+  .c .mark h2 { color:#fff; }
+  .cap {
+    font-family:var(--font-mono); font-size:10px; color:var(--color-fg3);
+    letter-spacing:0.5px; text-transform:uppercase;
+  }
+  .b .cap { color:rgba(15,23,42,0.65); }
+  .c .cap { color:rgba(255,255,255,0.65); }
+</style>
+</head>
+<body>
+  <div class="panel a">
+    <img class="logo-lg" src="../assets/brand/logo.png" alt="FairTogether"/>
+    <div class="mark"><h2>Fair Together</h2></div>
+    <div class="cap">primary · light</div>
+  </div>
+  <div class="panel b">
+    <img class="logo-md" src="../assets/brand/logo.png" alt="FairTogether"/>
+    <div class="cap">on sky gradient</div>
+  </div>
+  <div class="panel c">
+    <img class="logo-sm" src="../assets/brand/logo.png" alt="FairTogether"/>
+    <div class="cap">reversed · dark</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8"/>
+<title>Colors · Neutrals</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  body { margin:0; padding:20px; background:#fff; }
+  .wrap { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+  .sw { border-radius:12px; padding:12px; min-height:80px; display:flex; flex-direction:column; justify-content:space-between; border:1px solid var(--border-dim); }
+  .sw .name { font-family:var(--font-sans); font-weight:600; font-size:12px; }
+  .sw .hex { font-family:var(--font-mono); font-size:10px; opacity:.75; margin-top:4px; }
+  .sw .token { font-family:var(--font-mono); font-size:10px; opacity:.6; }
+  .dark { color:#fff; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="sw" style="background:#F0F4F8"><div><div class="name">Page BG</div><div class="hex">#F0F4F8</div></div><div class="token">--color-bg-page</div></div>
+    <div class="sw" style="background:#F1F5F9"><div><div class="name">Panel</div><div class="hex">#F1F5F9</div></div><div class="token">--color-bg-panel</div></div>
+    <div class="sw dark" style="background:#94A3B8"><div><div class="name">fg4</div><div class="hex">#94A3B8</div></div><div class="token">disabled/hint</div></div>
+    <div class="sw dark" style="background:#64748B"><div><div class="name">fg3</div><div class="hex">#64748B</div></div><div class="token">metadata</div></div>
+    <div class="sw dark" style="background:#334155"><div><div class="name">fg2</div><div class="hex">#334155</div></div><div class="token">secondary</div></div>
+    <div class="sw dark" style="background:#0F172A"><div><div class="name">fg1</div><div class="hex">#0F172A</div></div><div class="token">primary text</div></div>
+    <div class="sw" style="background:#FFFFFF"><div><div class="name">White</div><div class="hex">#FFFFFF</div></div><div class="token">card bg</div></div>
+    <div class="sw" style="background:#E8F0FE"><div><div class="name">Blue tint</div><div class="hex">#E8F0FE</div></div><div class="token">selected pill</div></div>
+    <div class="sw" style="background:rgba(148,163,184,0.15);border:1px solid rgba(148,163,184,0.3)"><div><div class="name">Border dim</div><div class="hex">rgba 0.15</div></div><div class="token">hairlines</div></div>
+    <div class="sw" style="background:rgba(255,255,255,0.72);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.45);background-image:var(--gradient-sky-soft)"><div><div class="name">Glass</div><div class="hex">rgba 0.72</div></div><div class="token">on gradient</div></div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,675 @@
+// ─────────────────────────────────────────────────────────────────────────────
+//  prisma/schema.prisma
+//  Fair Together — Agent System Database
+//  All tables required by the 5 agents
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Lawsuit ───────────────────────────────────────────────────────────────────
+
+model Lawsuit {
+  id                  String          @id @default(cuid())
+  caseNumber          String          @unique
+  court               String?
+  status              LawsuitStatus   @default(FILED)
+  defendantName       String
+  defendantSlug       String          // FK concept — matched to Brand.slug
+  plaintiffName       String?
+  filingDate          DateTime?
+  closeDate           DateTime?
+  result              String?         // CSV outcome: נדחה, פשרה, התקבל, נמחק
+  lawyers             String?
+
+  // Extracted from PDF
+  payoutMinILS        Decimal?        @db.Decimal(12, 2)
+  payoutMaxILS        Decimal?        @db.Decimal(12, 2)
+  totalPoolILS        Decimal?        @db.Decimal(18, 2)
+  eligibilityCriteria String?         @db.Text
+  claimDeadline       DateTime?
+  affectedPeriodStart DateTime?
+  affectedPeriodEnd   DateTime?
+  classSizeEstimate   Int?
+  summary             String?         @db.Text
+
+  // Phase 1 — Settlement claim fields
+  category            String?         // telecom, banks, retail, insurance, food, tech, transport
+  claimFormUrl        String?         // URL to official claim form (PDF or web)
+  payoutMethod        String?         // "bank_transfer", "credit", "check", "automatic"
+  distributionStatus  String?         // "open", "closed", "pending_approval", "distributing"
+  claimGuideSteps     Json?           // ["הורד טופס", "מלא פרטים", "שלח ל..."]
+  claimGuideHe        String?         @db.Text  // Hebrew plain-text guide for claiming
+  estimatedPayout     String?         // "50-200 ₪" — human-readable payout range
+  isSettlement        Boolean         @default(false) // true = has approved settlement with payout
+
+  // Data quality
+  confidence          DataConfidence  @default(UNVERIFIED)
+  confidenceScores    Json?           // { field: 0.0–1.0 }
+  rawExtraction       String?         @db.Text
+  sourceUrl           String?
+  pdfPath             String?
+  requiresReview      Boolean         @default(false)
+  reviewNotes         String?
+
+  // Lifecycle
+  firstSeenAt         DateTime        @default(now())
+  lastUpdatedAt       DateTime        @updatedAt
+  isActive            Boolean         @default(true)
+  isReady             Boolean         @default(false) // passed validation
+
+  // Relations
+  statusHistory       StatusChange[]
+  matches             Match[]
+  aiInsights          AiInsight[]
+  events              AgentEvent[]
+  claims              UserClaim[]
+
+  @@index([defendantSlug])
+  @@index([status])
+  @@index([isReady, isActive])
+  @@index([claimDeadline])
+  @@index([isSettlement])
+  @@index([category])
+  @@map("lawsuits")
+}
+
+model StatusChange {
+  id         String        @id @default(cuid())
+  lawsuitId  String
+  lawsuit    Lawsuit       @relation(fields: [lawsuitId], references: [id])
+  fromStatus LawsuitStatus
+  toStatus   LawsuitStatus
+  detectedAt DateTime      @default(now())
+  source     ChangeSource
+
+  @@map("status_changes")
+}
+
+enum LawsuitStatus {
+  FILED
+  CERTIFIED
+  DISCOVERY
+  SETTLEMENT
+  SETTLEMENT_APPROVED
+  RULING
+  CLOSED
+  DISMISSED
+  GLOBAL_POTENTIAL
+}
+
+enum DataConfidence {
+  VERIFIED
+  PENDING_REVIEW
+  UNVERIFIED
+}
+
+enum ChangeSource {
+  CSV
+  PDF
+  MANUAL
+}
+
+// ── User ──────────────────────────────────────────────────────────────────────
+
+model User {
+  id             String    @id @default(cuid())
+  phone          String?   @unique
+  email          String?   @unique
+  expoPushToken  String?
+  role           UserRole  @default(USER)
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  profile        UserProfile?
+  learnedWeights UserLearnedWeights?
+  matches        Match[]
+  alerts         UserAlert[]
+  claims         UserClaim[]
+
+  // Incubator relations
+  foundedCases      IncubatorCase[]   @relation("FoundedCases")
+  assignedCases     IncubatorCase[]   @relation("AssignedCases")
+  caseMemberships   CaseMember[]      @relation("CaseMemberships")
+  referralsMade     CaseMember[]      @relation("Referrals")
+  uploadedEvidence  CaseEvidence[]
+  chatMessages      CaseChatMessage[]
+  sentReferrals     ReferralEvent[]   @relation("SentReferrals")
+  receivedReferrals ReferralEvent[]   @relation("ReceivedReferrals")
+
+  // Legal consultation
+  legalThreads      LegalThread[]
+
+  // Admin audit trail
+  adminActions      AdminAction[]     @relation("AdminActions")
+
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  LAWYER
+}
+
+model UserProfile {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  selectedBrands        String[] // ["shufersal", "tnuva"] — legacy, kept for backward compat
+  consumerCategoryPrefs String[] // ["dairy", "snacks"] — legacy
+  selectedCategories    String[] // Phase 1: ["telecom", "banks", "retail"]
+  shoppingFrequency     ShoppingFrequency @default(WEEKLY)
+  householdSize         Int      @default(2)
+  timeWindowMonths      Int      @default(24)
+  displayName           String?  // User's display name
+
+  onboardingComplete    Boolean  @default(false)
+  notificationPref      NotificationPref @default(ALL)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("user_profiles")
+}
+
+model UserLearnedWeights {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  engagementRate  Float    @default(0.5) // 0–1: ratio of joined/(joined+dismissed)
+  brandEngagement Json     @default("{}") // { "shufersal": 3, "tnuva": 1 }
+  categoryBoosts  Json     @default("{}") // { "dairy": 1.2, "snacks": 0.8 }
+  totalActions    Int      @default(0)
+  lastUpdatedAt   DateTime @default(now())
+
+  @@map("user_learned_weights")
+}
+
+enum NotificationPref {
+  ALL            // כל עדכון
+  ACTIONABLE     // רק פעולות נדרשות (פשרה, מועד אחרון)
+  WEEKLY_DIGEST  // סיכום שבועי
+  NONE           // ללא
+}
+
+enum ShoppingFrequency {
+  DAILY
+  SEVERAL_TIMES_WEEK
+  WEEKLY
+  BI_WEEKLY
+  MONTHLY
+}
+
+// ── Matching ──────────────────────────────────────────────────────────────────
+
+model Match {
+  id              String    @id @default(cuid())
+  userId          String
+  lawsuitId       String
+  user            User      @relation(fields: [userId], references: [id])
+  lawsuit         Lawsuit   @relation(fields: [lawsuitId], references: [id])
+
+  relevanceScore  Int       // 0–100
+  matchConfidence Int       // 0–100 weighted final
+  matchReasons    String[]
+
+  notified        Boolean   @default(false)
+  notifiedAt      DateTime?
+
+  userAction      UserAction?
+  userActionAt    DateTime?
+  feedbackScore   Int?      // 1–5 stars
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([userId, lawsuitId])
+  @@index([userId])
+  @@index([lawsuitId])
+  @@index([notified])
+  @@map("matches")
+}
+
+enum UserAction {
+  JOINED
+  DISMISSED
+  SAVED
+  AI_INSIGHT_VIEWED
+}
+
+// ── User Claims (התביעות שלי) ─────────────────────────────────────────────────
+
+model UserClaim {
+  id        String   @id @default(cuid())
+  userId    String
+  lawsuitId String
+  action    String   // JOINED, SAVED, DISMISSED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  lawsuit   Lawsuit  @relation(fields: [lawsuitId], references: [id])
+
+  @@unique([userId, lawsuitId])
+  @@index([userId])
+  @@map("user_claims")
+}
+
+// ── AI Insights ───────────────────────────────────────────────────────────────
+
+model AiInsight {
+  id         String   @id @default(cuid())
+  userId     String
+  lawsuitId  String
+  lawsuit    Lawsuit  @relation(fields: [lawsuitId], references: [id])
+
+  content    String   @db.Text
+  generatedAt DateTime @default(now())
+  viewedAt   DateTime?
+
+  @@unique([userId, lawsuitId])
+  @@map("ai_insights")
+}
+
+// ── AI Cache (eligibility, summaries — avoids recomputing) ───────────────────
+
+model AICache {
+  id        String   @id @default(cuid())
+  userId    String
+  lawsuitId String
+  type      String   // ELIGIBILITY | SUMMARY
+  result    String   @db.Text
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, lawsuitId, type], name: "userId_lawsuitId_type")
+  @@index([expiresAt])
+  @@map("ai_cache")
+}
+
+// ── Agent Infrastructure ──────────────────────────────────────────────────────
+
+model AgentRun {
+  id          String     @id
+  agent       AgentName
+  triggeredBy TriggerType
+  startedAt   DateTime
+  finishedAt  DateTime?
+  status      RunStatus
+  stats       Json       @default("{}")
+  errors      Json       @default("[]")
+  retryCount  Int        @default(0)
+
+  @@index([agent, startedAt])
+  @@index([status])
+  @@map("agent_runs")
+}
+
+model AgentEvent {
+  id          String      @id @default(cuid())
+  type        String      // NEW_CASE_SCRAPED | EXTRACTION_COMPLETE | etc.
+  payload     Json
+  lawsuitId   String?
+  lawsuit     Lawsuit?    @relation(fields: [lawsuitId], references: [id])
+  status      EventStatus @default(PENDING)
+  processedAt DateTime?
+  failedAt    DateTime?
+  failReason  String?
+  createdAt   DateTime    @default(now())
+
+  @@index([status, createdAt])
+  @@map("agent_events")
+}
+
+model SystemAlert {
+  id        String   @id @default(cuid())
+  type      String
+  message   String   @db.Text
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("system_alerts")
+}
+
+model UserAlert {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  type      String
+  title     String
+  body      String
+  read      Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  @@index([userId, read])
+  @@map("user_alerts")
+}
+
+enum AgentName {
+  orchestrator
+  scraper
+  extraction
+  validation
+  status_monitor
+  push
+}
+
+enum TriggerType {
+  CRON
+  EVENT
+  MANUAL
+  RETRY
+}
+
+enum RunStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+  PARTIAL
+}
+
+enum EventStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+// ── Incubator — יוזמת תביעה / קבוצת דרישה ────────────────────────────────────
+// Pre-action groups. NOT class actions until court approval.
+// Terminology: "case" in code == "יוזמת תביעה" in UI.
+
+model IncubatorCase {
+  id                 String         @id @default(cuid())
+  title              String
+  defendantCompany   String
+  legalClaimType     LegalClaimType
+  damageEstimateNis  Int
+  narrative          String         @db.Text
+  narrativeEmbedding Unsupported("vector(1536)")?
+
+  // Incident timing — used by AI analyzer + statute-of-limitations check
+  incidentDate       DateTime?
+  incidentPeriodEnd  DateTime?
+
+  // Potential affected population (founder estimate, validated by AI)
+  estimatedAffected  AffectedSize?
+
+  founderUserId      String
+  status             CaseStatus     @default(DRAFT)
+
+  // AI analyzer output (5-factor scoring)
+  powerScore         Float?          // 0-100 overall strength
+  legalDifficulty    Int?            // 1-10
+  aiAnalysis         Json?           // { factors, flags, recommendation, summary }
+  aiAnalyzedAt       DateTime?
+  aiModel            String?         // e.g. "claude-sonnet-4-6"
+
+  goalMembers        Int            @default(500)
+  goalDamageNis      Int            @default(1000000)
+  approvedAt         DateTime?
+  assignedLawyerId   String?
+  adminNote          String?        @db.Text  // admin feedback on approve/reject/revisions
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  founder  User              @relation("FoundedCases", fields: [founderUserId], references: [id])
+  lawyer   User?             @relation("AssignedCases", fields: [assignedLawyerId], references: [id])
+  members  CaseMember[]
+  evidence CaseEvidence[]
+  messages CaseChatMessage[]
+  legalThreads LegalThread[]
+
+  @@index([status])
+  @@index([defendantCompany])
+  @@map("incubator_cases")
+}
+
+enum CaseStatus {
+  DRAFT
+  PENDING_REVIEW
+  REVISIONS_REQUESTED
+  LIVE
+  GOAL_REACHED
+  LEGAL_ACTION
+  CLOSED
+  REJECTED
+}
+
+enum LegalClaimType {
+  MISREPRESENTATION
+  OVERCHARGING
+  DEFECTIVE_PRODUCT
+  POOR_SERVICE
+  DISCRIMINATION
+  PRIVACY_VIOLATION
+  OTHER
+}
+
+enum AffectedSize {
+  TENS                   // עשרות
+  HUNDREDS               // מאות
+  THOUSANDS              // אלפים
+  TENS_OF_THOUSANDS      // עשרות אלפים
+  HUNDREDS_OF_THOUSANDS  // מאות אלפים
+  MILLIONS               // מיליונים
+}
+
+model CaseMember {
+  id                String     @id @default(cuid())
+  caseId            String
+  userId            String
+  role              MemberRole @default(CONTRIBUTOR)
+  personalDamageNis Int?
+  referredByUserId  String?
+  influencePoints   Int        @default(0)
+  kycLevel          Int        @default(0)
+  joinedAt          DateTime   @default(now())
+
+  case       IncubatorCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user       User          @relation("CaseMemberships", fields: [userId], references: [id])
+  referredBy User?         @relation("Referrals", fields: [referredByUserId], references: [id])
+
+  @@unique([caseId, userId])
+  @@index([userId])
+  @@map("case_members")
+}
+
+enum MemberRole {
+  FOUNDER
+  CONTRIBUTOR
+  MEMBER
+}
+
+model CaseEvidence {
+  id                String          @id @default(cuid())
+  caseId            String
+  uploaderUserId    String
+  kind              EvidenceKind    @default(FILE)
+
+  // FILE kind (R2-stored) — nullable until file upload lands
+  r2KeyOriginal     String?         // full version — lawyer/admin only
+  r2KeyRedacted     String?         // redacted version — visible in group
+  mimeType          String?
+  originalHash      String?         // SHA-256 for integrity
+
+  // TEXT kind — inline narrative/quote
+  textContent       String?         @db.Text
+
+  // URL kind — external link (article, complaint page, etc.)
+  externalUrl       String?
+
+  description       String?         // optional caption / context
+  redactionStatus   RedactionStatus @default(PENDING)
+  verifiedByAdminId String?
+  createdAt         DateTime        @default(now())
+
+  case     IncubatorCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  uploader User          @relation(fields: [uploaderUserId], references: [id])
+
+  @@index([caseId])
+  @@map("case_evidence")
+}
+
+enum EvidenceKind {
+  TEXT
+  URL
+  FILE
+}
+
+enum RedactionStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+  MANUAL_REVIEW
+}
+
+model CaseChatMessage {
+  id               String           @id @default(cuid())
+  caseId           String
+  userId           String
+  body             String           @db.Text
+  attachmentId     String?
+  moderationStatus ModerationStatus @default(APPROVED)
+  createdAt        DateTime         @default(now())
+
+  case IncubatorCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user User          @relation(fields: [userId], references: [id])
+
+  @@index([caseId, createdAt])
+  @@map("case_chat_messages")
+}
+
+enum ModerationStatus {
+  APPROVED
+  FLAGGED
+  BLOCKED
+}
+
+model ReferralEvent {
+  id                String    @id @default(cuid())
+  inviterUserId     String
+  inviteeUserId     String?
+  caseId            String
+  linkToken         String    @unique
+  ipHash            String?
+  deviceFingerprint String?
+  clickedAt         DateTime?
+  convertedAt       DateTime?
+  createdAt         DateTime  @default(now())
+
+  inviter User  @relation("SentReferrals", fields: [inviterUserId], references: [id])
+  invitee User? @relation("ReceivedReferrals", fields: [inviteeUserId], references: [id])
+
+  @@index([linkToken])
+  @@index([inviterUserId])
+  @@map("referral_events")
+}
+
+// ── Legal Consultation — ייעוץ משפטי ─────────────────────────────────────────
+// Two modes:
+//   STRENGTHEN — tied to a weak case; AI helps refine evidence/narrative
+//                with the goal of resubmitting at a higher powerScore
+//   GENERAL    — free-form chat on Israeli consumer-rights questions
+// Stage 2 (real lawyer) is represented by status=ESCALATED_TO_LAWYER — not
+// wired end-to-end yet; intentional placeholder for a future handoff.
+
+model LegalThread {
+  id        String            @id @default(cuid())
+  userId    String
+  mode      LegalThreadMode   @default(GENERAL)
+  status    LegalThreadStatus @default(ACTIVE)
+  title     String?           // optional thread title — AI or user assigned
+  caseId    String?           // non-null only when mode=STRENGTHEN
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  case     IncubatorCase? @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  messages LegalMessage[]
+
+  @@index([userId, updatedAt])
+  @@index([caseId])
+  @@map("legal_threads")
+}
+
+enum LegalThreadMode {
+  STRENGTHEN
+  GENERAL
+}
+
+enum LegalThreadStatus {
+  ACTIVE
+  RESOLVED              // user indicated the consultation was helpful
+  ESCALATED_TO_LAWYER   // flagged for stage-2 lawyer review (placeholder)
+  ARCHIVED
+}
+
+model LegalMessage {
+  id        String            @id @default(cuid())
+  threadId  String
+  role      LegalMessageRole
+  content   String            @db.Text
+  model     String?           // AI model id when role=ASSISTANT
+  createdAt DateTime          @default(now())
+
+  thread LegalThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+  @@map("legal_messages")
+}
+
+enum LegalMessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+// ── Admin Audit Trail ────────────────────────────────────────────────────────
+// Every admin mutation writes one AdminAction row atomically with the status
+// change (see db.approveIncubatorCase / rejectIncubatorCase / etc.).
+// This gives us a searchable history of "who did what, when, and why" —
+// critical once lawyers start relying on moderation decisions.
+
+model AdminAction {
+  id          String            @id @default(cuid())
+  adminUserId String
+  action      AdminActionKind
+  targetType  AdminActionTarget
+  targetId    String
+  reason      String?           @db.Text   // admin-supplied note ("why")
+  metadata    Json?             // { fromStatus, toStatus, evidenceId, ... }
+  createdAt   DateTime          @default(now())
+
+  admin User @relation("AdminActions", fields: [adminUserId], references: [id])
+
+  @@index([adminUserId, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@map("admin_actions")
+}
+
+enum AdminActionKind {
+  CASE_APPROVE
+  CASE_REJECT
+  CASE_REQUEST_REVISIONS
+  EVIDENCE_MARK_READY
+  EVIDENCE_MARK_FAILED
+  EVIDENCE_SCREENED
+}
+
+enum AdminActionTarget {
+  CASE
+  EVIDENCE
+  USER
+}

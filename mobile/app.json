@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Fair Together",
+    "slug": "fair-together",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "fairtogether",
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#2F6FED"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "tsconfigPaths": true
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.fairtogether.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.fairtogether.app"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "fair-together"
+      }
+    }
+  }
+}

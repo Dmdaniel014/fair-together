@@ -1,0 +1,26 @@
+<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8"/>
+<title>Tab bar · Bottom navigation</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  body { margin:0; padding:30px 20px; background:#F0F4F8; font-family:var(--font-sans); }
+  .bar { background:rgba(255,255,255,0.85); backdrop-filter:blur(20px); border-radius:18px; padding:10px 10px 8px; display:flex; justify-content:space-around; box-shadow:0 -2px 12px rgba(0,0,0,0.05); border:1px solid var(--glass-border); }
+  .tab { display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 10px; }
+  .icon { width:36px; height:36px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:19px; }
+  .tab.active .icon { background:rgba(26,86,219,0.15); }
+  .label { font-size:10px; font-weight:500; color:#94A3B8; }
+  .tab.active .label { color:#1A56DB; font-weight:600; }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <div class="tab"><div class="icon">👤</div><div class="label">פרופיל</div></div>
+    <div class="tab"><div class="icon">✉️</div><div class="label">הודעות</div></div>
+    <div class="tab"><div class="icon">📄</div><div class="label">תביעות</div></div>
+    <div class="tab"><div class="icon">🧭</div><div class="label">אקספלורר</div></div>
+    <div class="tab active"><div class="icon">🏠</div><div class="label">בית</div></div>
+  </div>
+</body>
+</html>

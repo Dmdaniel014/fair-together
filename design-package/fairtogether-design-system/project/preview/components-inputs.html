@@ -1,0 +1,27 @@
+<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8"/>
+<title>Inputs · Form controls</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  body { margin:0; padding:24px; background:#fff; display:flex; flex-direction:column; gap:14px; font-family:var(--font-sans); }
+  .field { display:flex; flex-direction:column; gap:6px; }
+  label { font-size:13px; font-weight:500; color:var(--color-fg2); text-align:right; }
+  input[type=text], input[type=email] { height:48px; padding:0 16px; border-radius:12px; border:1px solid var(--border-default); font-family:var(--font-sans); font-size:14px; color:var(--color-fg1); background:#fff; text-align:right; direction:rtl; }
+  input.focused { border:1.5px solid #1A56DB; box-shadow:0 0 0 3px rgba(26,86,219,0.10); padding:0 15.5px; }
+  .row { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:#fff; border-radius:12px; border:1px solid var(--border-default); }
+  .row.sel { background:#EEF3FD; border:1.5px solid #1A56DB; }
+  .txt { font-size:14px; color:#0F172A; }
+  .radio { width:22px; height:22px; border-radius:11px; border:2px solid var(--border-default); display:flex; align-items:center; justify-content:center; }
+  .radio.sel { border-color:#1A56DB; }
+  .radio.sel::after { content:''; width:12px; height:12px; background:#1A56DB; border-radius:6px; }
+</style>
+</head>
+<body>
+  <div class="field"><label>כתובת אימייל</label><input type="email" placeholder="האימייל שלך..." /></div>
+  <div class="field"><label>כתובת אימייל — focus</label><input type="email" class="focused" value="daniel@example.co.il" /></div>
+  <div class="row"><span class="txt">3 חודשים אחרונים</span><div class="radio"></div></div>
+  <div class="row sel"><span class="txt" style="color:#1A56DB;font-weight:500">24 חודשים אחרונים</span><div class="radio sel"></div></div>
+</body>
+</html>

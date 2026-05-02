@@ -1,0 +1,29 @@
+<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8"/>
+<title>Chat bubbles · AI consultation</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  body { margin:0; padding:20px; background:#F0F4F8; font-family:var(--font-sans); display:flex; flex-direction:column; gap:10px; }
+  .row { display:flex; }
+  .row.me { justify-content:flex-start; }
+  .row.ai { justify-content:flex-end; }
+  .bubble { max-width:75%; padding:10px 14px; font-size:14px; line-height:1.5; }
+  .me .bubble { background:#1A56DB; color:#fff; border-radius:18px 18px 4px 18px; }
+  .ai .bubble { background:#fff; color:#0F172A; border-radius:18px 18px 18px 4px; border:1px solid var(--border-dim); }
+  .sys { align-self:center; padding:6px 12px; background:#FEF3C7; color:#D97706; border-radius:999px; font-size:11px; font-weight:500; }
+  .thinking .bubble { color:var(--color-fg3); display:inline-flex; align-items:center; gap:6px; }
+  .dots { display:inline-flex; gap:3px; }
+  .dots span { width:5px; height:5px; background:var(--color-fg4); border-radius:999px; animation:b 1.2s infinite; }
+  .dots span:nth-child(2){animation-delay:.15s}.dots span:nth-child(3){animation-delay:.3s}
+  @keyframes b { 0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-3px);opacity:1} }
+</style>
+</head>
+<body>
+  <div class="sys">מצב: STRENGTHEN · חיזוק תיק שופרסל</div>
+  <div class="row me"><div class="bubble">שילמתי על מבצע של 10 ש"ח וגבו ממני 14. יש לי צילום קבלה.</div></div>
+  <div class="row ai"><div class="bubble">מעולה — הצילום הוא ראיה חזקה. באיזו חנות ומתי בדיוק היה הקניה?</div></div>
+  <div class="row ai thinking"><div class="bubble">חושב<span class="dots"><span></span><span></span><span></span></span></div></div>
+</body>
+</html>

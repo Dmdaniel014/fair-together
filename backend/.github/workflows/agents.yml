@@ -1,0 +1,98 @@
+# .github/workflows/agents.yml
+# Fair Together — Agent Cron Jobs
+# Runs on GitHub Actions (free tier: 2,000 minutes/month — more than enough)
+#
+# Schedule:
+#   Scraper Agent:      Every Sunday    03:00 UTC  — finds new class actions
+#   Status Monitor:     Every Wednesday 03:00 UTC  — checks existing cases
+#   Cleanup:            1st of month    02:00 UTC  — housekeeping
+#
+# Security: CRON_SECRET in GitHub Secrets prevents unauthorized triggers
+
+name: Fair Together Agents
+
+on:
+  schedule:
+    # ┌─ min  ┌─ hour  ┌─ day  ┌─ month  ┌─ day-of-week (0=Sun)
+    - cron: '0 3 * * 0'   # Sunday    03:00 UTC — Scraper
+    - cron: '0 3 * * 3'   # Wednesday 03:00 UTC — Status Monitor
+    - cron: '0 2 1 * *'   # 1st of month 02:00  — Cleanup
+
+  # Allow manual trigger from GitHub UI
+  workflow_dispatch:
+    inputs:
+      agent:
+        description: 'Agent to run'
+        required: true
+        type: choice
+        options: [scraper, status-check, cleanup, process-events]
+
+env:
+  API_BASE_URL: ${{ secrets.API_BASE_URL }}
+  CRON_SECRET:  ${{ secrets.CRON_SECRET }}
+
+jobs:
+
+  # ── Scraper Agent (Sunday) ──────────────────────────────────────────────────
+  scraper:
+    name: Scraper Agent — find new cases
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 3 * * 0' || (github.event_name == 'workflow_dispatch' && inputs.agent == 'scraper')
+    steps:
+      - name: Trigger scraper agent
+        run: |
+          response=$(curl -s -o response.json -w "%{http_code}" \
+            -X POST "$API_BASE_URL/api/agents/cron/scrape" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json")
+          echo "HTTP Status: $response"
+          cat response.json
+          if [ "$response" != "200" ]; then exit 1; fi
+
+      - name: Process events after scrape
+        run: |
+          curl -s -X POST "$API_BASE_URL/api/agents/events/process" \
+            -H "Authorization: Bearer $CRON_SECRET"
+
+  # ── Status Monitor Agent (Wednesday) ───────────────────────────────────────
+  status-monitor:
+    name: Status Monitor — check existing cases
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 3 * * 3' || (github.event_name == 'workflow_dispatch' && inputs.agent == 'status-check')
+    steps:
+      - name: Trigger status check
+        run: |
+          response=$(curl -s -o response.json -w "%{http_code}" \
+            -X POST "$API_BASE_URL/api/agents/cron/status-check" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json")
+          echo "HTTP Status: $response"
+          cat response.json
+          if [ "$response" != "200" ]; then exit 1; fi
+
+      - name: Process events after status check
+        run: |
+          curl -s -X POST "$API_BASE_URL/api/agents/events/process" \
+            -H "Authorization: Bearer $CRON_SECRET"
+
+  # ── Monthly Cleanup ─────────────────────────────────────────────────────────
+  cleanup:
+    name: Monthly cleanup
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 2 1 * *' || (github.event_name == 'workflow_dispatch' && inputs.agent == 'cleanup')
+    steps:
+      - name: Trigger cleanup
+        run: |
+          curl -s -X POST "$API_BASE_URL/api/agents/cron/cleanup" \
+            -H "Authorization: Bearer $CRON_SECRET"
+
+  # ── On-demand event processing ──────────────────────────────────────────────
+  process-events:
+    name: Process pending events
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.agent == 'process-events'
+    steps:
+      - name: Process all pending events
+        run: |
+          curl -s -X POST "$API_BASE_URL/api/agents/events/process" \
+            -H "Authorization: Bearer $CRON_SECRET"

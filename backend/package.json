@@ -1,0 +1,51 @@
+{
+  "name": "fair-together-agents",
+  "version": "1.0.0",
+  "description": "Fair Together — Legal Agent System",
+  "main": "dist/orchestrator/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "npx tsx --env-file=.env api/server.ts",
+    "db:generate": "prisma generate --schema=db/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=db/schema.prisma",
+    "db:push": "prisma db push --schema=db/schema.prisma",
+    "db:seed": "npx tsx db/seed.ts",
+    "db:seed:incubator": "npx tsx db/seed-incubator.ts",
+    "db:setup:vector": "npx tsx db/setup-vector.ts all",
+    "db:setup:vector:ext": "npx tsx db/setup-vector.ts extension",
+    "db:setup:vector:idx": "npx tsx db/setup-vector.ts index",
+    "db:studio": "prisma studio --schema=db/schema.prisma",
+    "agent:scrape": "npx tsx orchestrator/index.ts",
+    "agent:status": "npx tsx -e \"import('./orchestrator/index.js').then(m => m.cronWeeklyStatusCheck())\"",
+    "agent:events": "npx tsx -e \"import('./orchestrator/index.js').then(m => m.processEvents())\"",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0",
+    "@aws-sdk/client-s3": "^3.1033.0",
+    "@aws-sdk/s3-request-presigner": "^3.1033.0",
+    "@neondatabase/serverless": "^1.0.2",
+    "@prisma/adapter-neon": "^5.22.0",
+    "@prisma/client": "^5.15.0",
+    "express": "^4.19.0",
+    "jsonwebtoken": "^9.0.3",
+    "playwright": "^1.59.1",
+    "sharp": "^0.34.5",
+    "ws": "^8.20.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.12",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20.19.37",
+    "jest": "^29.7.0",
+    "prisma": "^5.15.0",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8"/>
+<title>FairTogether — Mobile UI Kit</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" href="../../colors_and_type.css"/>
+<style>
+  html, body { margin:0; padding:0; background:#EAF0F7; font-family:'Heebo', system-ui, sans-serif; color:#0F172A; min-height:100vh; }
+  .wrap { padding: 32px 24px 64px; }
+  .kit-head { max-width:1400px; margin:0 auto 28px; display:flex; justify-content:space-between; align-items:center; direction:rtl; }
+  .kit-head h1 { margin:0; font-size:24px; font-weight:700; }
+  .kit-head p { margin:4px 0 0; font-size:13px; color:#64748B; }
+  .screens { max-width:1700px; margin:0 auto; display:flex; gap:36px 32px; flex-wrap:wrap; justify-content:center; direction:ltr; }
+  .controls { display:flex; gap:8px; flex-wrap:wrap; }
+  .controls button {
+    font-family:'Heebo',sans-serif; font-weight:500; font-size:13px;
+    padding:8px 16px; border-radius:12px; border:1px solid rgba(148,163,184,0.3);
+    background:#fff; color:#0F172A; cursor:pointer;
+  }
+  .controls button.active { background:#1A56DB; color:#fff; border-color:#1A56DB; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="./Phone.jsx"></script>
+<script type="text/babel" src="./Primitives.jsx"></script>
+<script type="text/babel" src="./Screens.jsx"></script>
+
+<script type="text/babel">
+function App() {
+  const [tab, setTab] = React.useState('home');
+  const [view, setView] = React.useState('home'); // 'home', 'detail', 'chat'
+  const [sel, setSel] = React.useState(null);
+  const [cats, setCats] = React.useState(new Set(['מכולת','תקשורת']));
+
+  const toggleCat = (c) => {
+    const n = new Set(cats);
+    n.has(c) ? n.delete(c) : n.add(c);
+    setCats(n);
+  };
+
+  const interactive = (() => {
+    if (view === 'detail') return <SettlementDetail settlement={sel} onBack={()=>setView('home')}/>;
+    if (view === 'chat')   return <LegalChat onBack={()=>setView('home')}/>;
+    if (tab === 'home')          return <HomeScreen onOpenSettlement={(s)=>{setSel(s); setView('detail');}} onOpenConsultation={()=>setView('chat')}/>;
+    if (tab === 'claims')        return <ClaimsScreen/>;
+    if (tab === 'notifications') return <NotificationsScreen/>;
+    if (tab === 'profile')       return <ProfileScreen/>;
+    if (tab === 'explore')       return <HomeScreen onOpenSettlement={(s)=>{setSel(s); setView('detail');}} onOpenConsultation={()=>setView('chat')}/>;
+    return null;
+  })();
+
+  return (
+    <div className="wrap">
+      <div className="kit-head">
+        <div className="controls">
+          <button className={view==='home' && tab==='home' ? 'active':''} onClick={()=>{setTab('home'); setView('home');}}>בית</button>
+          <button className={tab==='claims' ? 'active':''} onClick={()=>{setTab('claims'); setView('home');}}>תביעות</button>
+          <button className={tab==='notifications' ? 'active':''} onClick={()=>{setTab('notifications'); setView('home');}}>הודעות</button>
+          <button className={tab==='profile' ? 'active':''} onClick={()=>{setTab('profile'); setView('home');}}>פרופיל</button>
+          <button className={view==='chat' ? 'active':''} onClick={()=>setView('chat')}>ייעוץ משפטי</button>
+        </div>
+        <div style={{textAlign:'right'}}>
+          <h1>FairTogether · פייר טוגדר</h1>
+          <p>Mobile UI Kit — Hebrew / RTL-first</p>
+        </div>
+      </div>
+
+      <div className="screens">
+        <Phone label="splash · onboarding">
+          <SplashScreen onStart={()=>{}}/>
+        </Phone>
+        <Phone label="onboarding · קטגוריות">
+          <CategoriesScreen selected={cats} onToggle={toggleCat} onNext={()=>{}}/>
+        </Phone>
+        <Phone label="interactive prototype">
+          <div style={{height:'100%', position:'relative'}}>
+            {interactive}
+            <TabBar active={tab} onChange={(k)=>{setTab(k); setView('home');}}/>
+          </div>
+        </Phone>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

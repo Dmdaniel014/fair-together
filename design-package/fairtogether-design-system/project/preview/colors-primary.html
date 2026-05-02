@@ -1,0 +1,27 @@
+<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8"/>
+<title>Colors · Primary & Brand</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  body { margin:0; padding:20px; background:#fff; }
+  .wrap { display:flex; gap:10px; }
+  .sw { flex:1; border-radius:12px; padding:14px; display:flex; flex-direction:column; justify-content:space-between; min-height:92px; border:1px solid var(--border-dim); }
+  .sw .h { display:flex; justify-content:space-between; align-items:flex-start; color:#fff; }
+  .sw .name { font-family:var(--font-sans); font-weight:600; font-size:13px; }
+  .sw .hex { font-family:var(--font-mono); font-size:11px; opacity:.85; }
+  .sw .token { font-family:var(--font-mono); font-size:10px; color:#fff; opacity:.75; }
+  .tint { color:var(--color-fg1)!important; }
+  .tint .hex, .tint .token { color:var(--color-fg3)!important; opacity:1; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="sw" style="background:#1A56DB"><div class="h"><div class="name">Primary</div><div class="hex">#1A56DB</div></div><div class="token">--color-primary</div></div>
+    <div class="sw" style="background:#3B82F6"><div class="h"><div class="name">Primary Light</div><div class="hex">#3B82F6</div></div><div class="token">--color-primary-light</div></div>
+    <div class="sw" style="background:#93C5FD"><div class="h tint"><div class="name">Primary Dim</div><div class="hex">#93C5FD</div></div><div class="token tint">--color-primary-dim</div></div>
+    <div class="sw tint" style="background:#EEF3FD;border:1px solid var(--border-dim)"><div class="h tint"><div class="name">Primary 50</div><div class="hex">#EEF3FD</div></div><div class="token tint">--color-primary-50</div></div>
+  </div>
+</body>
+</html>

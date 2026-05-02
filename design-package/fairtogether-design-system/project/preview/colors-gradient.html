@@ -1,0 +1,20 @@
+<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8"/>
+<title>Gradient · Sky</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  body { margin:0; padding:20px; background:#fff; display:flex; gap:12px; }
+  .g { flex:1; border-radius:16px; padding:16px; min-height:130px; display:flex; flex-direction:column; justify-content:space-between; color:var(--color-fg1); border:1px solid var(--border-dim); }
+  .full { background:var(--gradient-sky); }
+  .soft { background:var(--gradient-sky-soft); }
+  .label { font-family:var(--font-sans); font-weight:700; font-size:14px; }
+  .hex { font-family:var(--font-mono); font-size:10px; color:var(--color-fg2); line-height:1.7; }
+</style>
+</head>
+<body>
+  <div class="g full"><div class="label">Sky — full</div><div class="hex">linear-gradient(180deg,<br/>#89B4E8 · #A8CBEF · #C8DDF5 · #E4EDF9 · #F0F4F8)<br/><br/>used for splash / auth</div></div>
+  <div class="g soft"><div class="label">Sky — soft</div><div class="hex">linear-gradient(180deg, #DCE9F8 → #F0F4F8)<br/><br/>onboarding + home top<br/>fades into page bg</div></div>
+</body>
+</html>

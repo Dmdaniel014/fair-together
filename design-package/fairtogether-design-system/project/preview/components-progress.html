@@ -1,0 +1,34 @@
+<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8"/>
+<title>Progress · Power score meter</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  body { margin:0; padding:24px; background:#fff; font-family:var(--font-sans); display:flex; flex-direction:column; gap:18px; }
+  .block { display:flex; flex-direction:column; gap:6px; }
+  .top { display:flex; justify-content:space-between; align-items:center; font-family:var(--font-mono); font-size:11px; color:var(--color-fg3); }
+  .val { font-weight:600; }
+  .bar { height:6px; background:#E2E8F0; border-radius:999px; overflow:hidden; direction:ltr; display:flex; flex-direction:row-reverse; }
+  .fill { height:100%; border-radius:999px; }
+  .mini { height:3px; }
+  .steps { display:flex; gap:4px; }
+  .step { height:4px; flex:1; background:#E2E8F0; border-radius:999px; }
+  .step.on { background:#059669; }
+</style>
+</head>
+<body>
+  <div class="block">
+    <div class="top"><span>powerScore</span><span class="val" style="color:#059669">87%</span></div>
+    <div class="bar"><div class="fill" style="width:87%;background:#059669"></div></div>
+  </div>
+  <div class="block">
+    <div class="top"><span>match confidence</span><span class="val" style="color:#D97706">52%</span></div>
+    <div class="bar mini"><div class="fill" style="width:52%;background:#D97706"></div></div>
+  </div>
+  <div class="block">
+    <div class="top"><span>claim — 3/4 אושרה לפיצוי 150₪</span><span class="val" style="color:#059669">כמעט מוכן</span></div>
+    <div class="steps"><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step"></div></div>
+  </div>
+</body>
+</html>

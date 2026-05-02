@@ -1,0 +1,89 @@
+<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8"/>
+<title>Buttons</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  body { margin:0; padding:22px 24px; background:#fff; display:flex; flex-direction:column; gap:14px; font-family: var(--font-sans); }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .btn {
+    height:48px; padding:0 22px; border-radius:16px;
+    font-family:var(--font-sans); font-weight:600; font-size:15px;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    border:0; cursor:pointer; letter-spacing:0.1px;
+    transition: transform .15s ease;
+  }
+  .btn.small { height:36px; padding:0 14px; font-size:13px; border-radius:12px; }
+
+  .primary     { background:#1A56DB; color:#fff; box-shadow: 0 4px 12px rgba(26,86,219,0.20); }
+  .secondary   { background:#fff; color:#0F172A; border:1px solid rgba(148,163,184,0.28); }
+  .ghost       { background:transparent; color:#1A56DB; }
+  .destructive { background:#DC2626; color:#fff; box-shadow: 0 4px 12px rgba(220,38,38,0.20); }
+
+  /* Disabled — on-brand, not muddy gray. Reuses brand hue at low chroma
+     so buttons still read as themselves, just inactive. */
+  .primary[disabled] {
+    background:#C9D7F3;      /* primary-100 tint */
+    color:#7F9BD2;           /* primary-400 */
+    box-shadow:none;
+    cursor:not-allowed;
+  }
+  .secondary[disabled] {
+    background:#F8FAFC;
+    color:#94A3B8;
+    border-color:rgba(148,163,184,0.18);
+    cursor:not-allowed;
+  }
+  .destructive[disabled] {
+    background:#F4CACA;      /* danger tint */
+    color:#C78787;
+    box-shadow:none;
+    cursor:not-allowed;
+  }
+  .ghost[disabled] {
+    color:#A9BADB;
+    cursor:not-allowed;
+  }
+
+  .label {
+    font-family:var(--font-mono); font-size:10px; color:var(--color-fg3);
+    min-width:96px; text-transform:uppercase; letter-spacing:0.5px;
+  }
+  .state {
+    font-family:var(--font-mono); font-size:9px; color:#94A3B8;
+    padding:2px 7px; border-radius:999px; background:#F1F5F9;
+    align-self:center; letter-spacing:0.3px;
+  }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="label">primary</div>
+    <button class="btn primary">כניסה</button>
+    <button class="btn primary">בדיקת זכאות</button>
+    <button class="btn primary small">המשך</button>
+    <button class="btn primary" disabled>המשך</button>
+    <span class="state">disabled</span>
+  </div>
+  <div class="row">
+    <div class="label">secondary</div>
+    <button class="btn secondary">פרטים</button>
+    <button class="btn secondary">לא רלוונטי</button>
+    <button class="btn secondary" disabled>פרטים</button>
+    <span class="state">disabled</span>
+  </div>
+  <div class="row">
+    <div class="label">destructive</div>
+    <button class="btn destructive">מחק</button>
+    <button class="btn destructive" disabled>מחק</button>
+    <span class="state">disabled</span>
+  </div>
+  <div class="row">
+    <div class="label">ghost</div>
+    <button class="btn ghost">ביטול</button>
+    <button class="btn ghost" disabled>ביטול</button>
+    <span class="state">disabled</span>
+  </div>
+</body>
+</html>

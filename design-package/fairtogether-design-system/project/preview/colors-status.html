@@ -1,0 +1,25 @@
+<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8"/>
+<title>Status · Lawsuit lifecycle</title>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  body { margin:0; padding:20px; background:#fff; display:flex; flex-direction:column; gap:8px; }
+  .row { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-radius:12px; background:#fff; border:1px solid var(--border-dim); }
+  .left { display:flex; align-items:center; gap:10px; }
+  .label { font-family:var(--font-sans); font-weight:600; font-size:13px; color:var(--color-fg1); }
+  .sub { font-family:var(--font-mono); font-size:10px; color:var(--color-fg3); }
+  .pill { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-family:var(--font-sans); font-weight:600; font-size:10px; border:1px solid; letter-spacing:0.3px; }
+  .dot { width:5px; height:5px; border-radius:999px; }
+</style>
+</head>
+<body>
+  <div class="row"><div class="left"><span class="pill" style="background:rgba(5,150,105,0.12);color:#059669;border-color:#05966940"><span class="dot" style="background:#059669"></span>פשרה אושרה</span><span class="label">SETTLEMENT_APPROVED</span></div><span class="sub">#059669</span></div>
+  <div class="row"><div class="left"><span class="pill" style="background:rgba(217,119,6,0.10);color:#D97706;border-color:#D9770640"><span class="dot" style="background:#D97706"></span>בהליך פשרה</span><span class="label">SETTLEMENT</span></div><span class="sub">#D97706</span></div>
+  <div class="row"><div class="left"><span class="pill" style="background:rgba(37,99,235,0.10);color:#2563EB;border-color:#2563EB40"><span class="dot" style="background:#2563EB"></span>התקבלה</span><span class="label">RULING</span></div><span class="sub">#2563EB</span></div>
+  <div class="row"><div class="left"><span class="pill" style="background:rgba(124,58,237,0.10);color:#7C3AED;border-color:#7C3AED40"><span class="dot" style="background:#7C3AED"></span>אושרה כייצוגית</span><span class="label">CERTIFIED</span></div><span class="sub">#7C3AED</span></div>
+  <div class="row"><div class="left"><span class="pill" style="background:rgba(100,116,139,0.08);color:#64748B;border-color:#64748B40"><span class="dot" style="background:#64748B"></span>הוגשה</span><span class="label">FILED</span></div><span class="sub">#64748B</span></div>
+  <div class="row"><div class="left"><span class="pill" style="background:rgba(148,163,184,0.08);color:#94A3B8;border-color:#94A3B840"><span class="dot" style="background:#94A3B8"></span>סגור / נדחה</span><span class="label">CLOSED / DISMISSED</span></div><span class="sub">#94A3B8</span></div>
+</body>
+</html>

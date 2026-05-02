@@ -1,0 +1,194 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   FairTogether · פייר טוגדר — Design Tokens
+   Derived from mobile/src/theme/index.ts. RTL-first.
+   ────────────────────────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* ── Type faces ────────────────────────────────────────────────────────── */
+  --font-sans: 'Heebo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  /* ── Brand / Primary ───────────────────────────────────────────────────── */
+  --color-primary:        #1A56DB;   /* core CTA blue */
+  --color-primary-light:  #3B82F6;
+  --color-primary-dim:    #93C5FD;
+  --color-primary-50:     #EEF3FD;   /* chip selected fill */
+  --color-primary-glow:   rgba(26, 86, 219, 0.15);
+
+  /* ── Backgrounds ───────────────────────────────────────────────────────── */
+  --color-bg-page:        #F0F4F8;   /* cool neutral page base */
+  --color-bg-white:       #FFFFFF;
+  --color-bg-panel:       #F1F5F9;   /* subtle section group */
+  --color-bg-blue:        #E8F0FE;   /* pill fill / selected chip */
+  --color-bg-sky-top:     #B8D4F0;   /* splash gradient top */
+  --color-bg-sky-mid:     #C8DDF5;
+  --color-bg-sky-bottom:  #F0F4F8;   /* blends to page */
+
+  /* ── Glass surfaces ────────────────────────────────────────────────────── */
+  --glass:         rgba(255, 255, 255, 0.72);
+  --glass-border:  rgba(255, 255, 255, 0.45);
+  --glass-light:   rgba(255, 255, 255, 0.55);
+  --glass-dark:    rgba(255, 255, 255, 0.85);
+  --glass-subtle:  rgba(255, 255, 255, 0.35);
+
+  /* ── Text ──────────────────────────────────────────────────────────────── */
+  --color-fg1:    #0F172A;   /* primary */
+  --color-fg2:    #334155;   /* secondary */
+  --color-fg3:    #64748B;   /* tertiary / metadata */
+  --color-fg4:    #94A3B8;   /* disabled / hint */
+  --color-fg-on-primary: #FFFFFF;
+
+  /* ── Semantic ──────────────────────────────────────────────────────────── */
+  --color-success:    #059669;   /* primary "match / approved" green */
+  --color-success-bg: #D1FAE5;
+  --color-warning:    #D97706;
+  --color-warning-bg: #FEF3C7;
+  --color-danger:     #DC2626;
+  --color-danger-bg:  #FEE2E2;
+  --color-info:       #2563EB;
+  --color-accent:     #059669;   /* shared w/ success */
+
+  /* Status pills (lawsuit lifecycle) */
+  --status-settlement-approved: #059669;
+  --status-settlement:          #D97706;
+  --status-ruling:              #2563EB;
+  --status-certified:           #7C3AED;
+  --status-filed:               #64748B;
+  --status-closed:              #94A3B8;
+
+  /* ── Borders ───────────────────────────────────────────────────────────── */
+  --border-default: rgba(148, 163, 184, 0.20);
+  --border-light:   rgba(148, 163, 184, 0.12);
+  --border-dim:     rgba(148, 163, 184, 0.15);
+  --border-focus:   var(--color-primary);
+
+  /* ── Spacing (4-pt grid) ───────────────────────────────────────────────── */
+  --space-xs:   4px;
+  --space-sm:   8px;
+  --space-md:   12px;
+  --space-base: 16px;
+  --space-lg:   20px;
+  --space-xl:   24px;
+  --space-2xl:  32px;
+  --space-3xl:  48px;
+
+  /* ── Radii ─────────────────────────────────────────────────────────────── */
+  --radius-xs:  4px;
+  --radius-sm:  8px;
+  --radius-md:  12px;
+  --radius-lg:  16px;   /* cards */
+  --radius-xl:  20px;
+  --radius-2xl: 24px;
+  --radius-pill: 999px;
+
+  /* ── Shadows ──────────────────────────────────────────────────────────── */
+  --shadow-card:        0 2px 8px rgba(100, 116, 139, 0.06);
+  --shadow-card-raised: 0 4px 12px rgba(100, 116, 139, 0.10);
+  --shadow-button:      0 4px 12px rgba(26, 86, 219, 0.20);
+  --shadow-glass:       0 2px 16px rgba(0, 0, 0, 0.04);
+  --shadow-glow:        0 0 20px rgba(26, 86, 219, 0.15);
+
+  /* ── Gradients ────────────────────────────────────────────────────────── */
+  --gradient-sky: linear-gradient(180deg, #89B4E8 0%, #A8CBEF 25%, #C8DDF5 50%, #E4EDF9 75%, #F0F4F8 100%);
+  --gradient-sky-soft: linear-gradient(180deg, #DCE9F8 0%, #F0F4F8 100%);
+
+  /* ── Type scale (mobile-first, matches theme.ts) ──────────────────────── */
+  --fs-display-lg: 28px;  --lh-display-lg: 38px;  --ls-display-lg: -0.5px;
+  --fs-display-md: 22px;  --lh-display-md: 30px;  --ls-display-md: -0.3px;
+  --fs-h1:         20px;  --lh-h1:         28px;
+  --fs-h2:         17px;  --lh-h2:         24px;
+  --fs-h3:         15px;  --lh-h3:         22px;
+  --fs-body-lg:    15px;  --lh-body-lg:    23px;
+  --fs-body:       14px;  --lh-body:       21px;
+  --fs-body-sm:    13px;  --lh-body-sm:    19px;
+  --fs-label:      14px;  --lh-label:      20px;
+  --fs-label-sm:   12px;  --lh-label-sm:   18px;
+  --fs-caption:    12px;  --lh-caption:    17px;
+  --fs-button:     17px;  --lh-button:     24px;
+}
+
+/* ── Dark mode ───────────────────────────────────────────────────────────── */
+[data-theme="dark"], .dark {
+  --color-bg-page:        #0B1120;
+  --color-bg-white:       #0F172A;
+  --color-bg-panel:       #1E293B;
+  --color-bg-blue:        #1E3A8A;
+  --color-bg-sky-top:     #1E3A5F;
+  --color-bg-sky-bottom:  #0B1120;
+
+  --glass:         rgba(15, 23, 42, 0.72);
+  --glass-border:  rgba(148, 163, 184, 0.18);
+  --glass-light:   rgba(30, 41, 59, 0.55);
+  --glass-dark:    rgba(15, 23, 42, 0.88);
+
+  --color-fg1: #F8FAFC;
+  --color-fg2: #CBD5E1;
+  --color-fg3: #94A3B8;
+  --color-fg4: #64748B;
+
+  --color-primary:       #3B82F6;
+  --color-primary-light: #60A5FA;
+  --color-primary-50:    rgba(59, 130, 246, 0.12);
+
+  --color-success-bg: rgba(5, 150, 105, 0.18);
+  --color-warning-bg: rgba(217, 119, 6, 0.18);
+  --color-danger-bg:  rgba(220, 38, 38, 0.18);
+
+  --border-default: rgba(148, 163, 184, 0.22);
+  --border-light:   rgba(148, 163, 184, 0.12);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Base element styles (use inside previews / UI kit)
+   ────────────────────────────────────────────────────────────────────────── */
+
+html {
+  direction: rtl;
+  font-family: var(--font-sans);
+  color: var(--color-fg1);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg-page);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+
+/* Semantic typography classes — use these OR CSS vars directly */
+.ft-display-lg { font-family: var(--font-sans); font-weight: 700; font-size: var(--fs-display-lg); line-height: var(--lh-display-lg); letter-spacing: var(--ls-display-lg); color: var(--color-fg1); }
+.ft-display-md { font-family: var(--font-sans); font-weight: 700; font-size: var(--fs-display-md); line-height: var(--lh-display-md); letter-spacing: var(--ls-display-md); color: var(--color-fg1); }
+.ft-h1         { font-family: var(--font-sans); font-weight: 700; font-size: var(--fs-h1); line-height: var(--lh-h1); color: var(--color-fg1); }
+.ft-h2         { font-family: var(--font-sans); font-weight: 600; font-size: var(--fs-h2); line-height: var(--lh-h2); color: var(--color-fg1); }
+.ft-h3         { font-family: var(--font-sans); font-weight: 600; font-size: var(--fs-h3); line-height: var(--lh-h3); color: var(--color-fg1); }
+.ft-body-lg    { font-family: var(--font-sans); font-weight: 400; font-size: var(--fs-body-lg); line-height: var(--lh-body-lg); color: var(--color-fg2); }
+.ft-body       { font-family: var(--font-sans); font-weight: 400; font-size: var(--fs-body); line-height: var(--lh-body); color: var(--color-fg2); }
+.ft-body-sm    { font-family: var(--font-sans); font-weight: 400; font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--color-fg2); }
+.ft-label      { font-family: var(--font-sans); font-weight: 500; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--color-fg1); }
+.ft-label-sm   { font-family: var(--font-sans); font-weight: 500; font-size: var(--fs-label-sm); line-height: var(--lh-label-sm); color: var(--color-fg2); }
+.ft-caption    { font-family: var(--font-sans); font-weight: 400; font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--color-fg3); }
+.ft-button     { font-family: var(--font-sans); font-weight: 600; font-size: var(--fs-button); line-height: var(--lh-button); letter-spacing: 0.1px; }
+.ft-mono       { font-family: var(--font-mono); font-weight: 500; font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); color: var(--color-fg3); }
+
+/* Card primitives */
+.ft-card {
+  background: var(--color-bg-white);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+.ft-glass-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+}
+
+/* Common preview scaffolding */
+.ft-preview-pad { padding: var(--space-base); }
