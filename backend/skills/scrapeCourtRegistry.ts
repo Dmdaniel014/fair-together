@@ -133,6 +133,11 @@ export async function scrapeCourtRegistry(options: CourtScrapeOptions): Promise<
       locale: 'he-IL',
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       ignoreHTTPSErrors: true,
+      // Use a very tall viewport so ag-Grid renders all rows without virtual scroll.
+      // The grid only virtualizes rows that are outside the visible viewport height;
+      // with viewportSize.height = 8000px, up to ~300 rows render simultaneously
+      // (court.gov.il caps at 300 per search) — no per-row scrolling needed.
+      viewport: { width: 1280, height: 8000 },
     });
     const page = await context.newPage();
     page.setDefaultTimeout(pageTimeout);
@@ -226,28 +231,41 @@ export async function scrapeCourtRegistry(options: CourtScrapeOptions): Promise<
     }
 
     // ── Step 6: Extract all pages ──────────────────────────────────────
+    // Wait for at least one ag-Grid row to be attached before extracting.
+    try {
+      await page.waitForSelector('.ag-row', { timeout: 15000, state: 'attached' });
+    } catch {
+      console.log(`[CourtScraper] Warning: no ag-Grid rows visible within 15s`);
+    }
+    await page.waitForTimeout(1000);
+
     let currentPage = 1;
     const seenCaseNumbers = new Set<string>();
 
     while (currentPage <= maxPages) {
-      // Extract visible ag-Grid rows
+      // extractGridRows scrolls the ag-Grid body-viewport to harvest all rows
+      // (Strategy B handles virtual-scroll by collecting rows at each stop).
       const rows = await extractGridRows(page);
       if (rows.length === 0) break;
 
       for (const row of rows) {
-        if (!row.caseNumber || seenCaseNumbers.has(row.caseNumber)) continue;
-        seenCaseNumbers.add(row.caseNumber);
+        // Deduplicate: skip rows where we couldn't detect a case number
+        // AND fall back to openDate as a last-resort key so we don't lose
+        // rows whose number didn't match the regex (e.g. purely numeric IDs).
+        const key = row.caseNumber || `date:${row.openDate}:${row.caseTitle}`;
+        if (!key || seenCaseNumbers.has(key)) continue;
+        seenCaseNumbers.add(key);
 
         const defendantName = extractDefendant(row.caseTitle);
         const slug = resolveBrandSlug(defendantName);
         if (brandFilterOnly && !slug) continue;
 
         const rawCase: RawCaseData = {
-          caseNumber:      row.caseNumber,
+          caseNumber:      row.caseNumber || key,
           defendantName,
           defendantSlug:   slug,
           court:           row.court,
-          status:          'FILED', // Registry lists all open cases
+          status:          'FILED',
           result:          '',
           filingDate:      parseHebrewDate(row.openDate),
           closeDate:       '',
@@ -271,7 +289,7 @@ export async function scrapeCourtRegistry(options: CourtScrapeOptions): Promise<
         result.cases.push(rawCase);
       }
 
-      console.log(`[CourtScraper]   Page ${currentPage}: ${rows.length} rows, ${result.cases.length} total cases`);
+      console.log(`[CourtScraper]   Page ${currentPage}: ${rows.length} rows harvested, ${result.cases.length} total cases`);
 
       // Navigate to next page
       const nextBtn = page.locator('.ag-paging-button.ngcs-buttonAsLink:has-text("לדף הבא")').last();
@@ -285,7 +303,10 @@ export async function scrapeCourtRegistry(options: CourtScrapeOptions): Promise<
 
       try {
         await nextBtn.click({ timeout: 10000 });
-        await page.waitForTimeout(2000);
+        // Wait for rows to re-render after pagination
+        await page.waitForTimeout(1500);
+        await page.waitForSelector('.ag-row', { timeout: 10000, state: 'attached' }).catch(() => {});
+        await page.waitForTimeout(500);
         currentPage++;
       } catch {
         break;
@@ -313,7 +334,22 @@ async function dismissOverlays(page: any): Promise<void> {
   await page.waitForTimeout(300);
 }
 
-/** Extract all visible ag-Grid rows from the current page */
+/** Extract all ag-Grid rows from the current page.
+ *
+ *  The court site runs ag-Grid in virtual-scroll mode: only rows that are
+ *  in the visible viewport are rendered to the DOM.  We work around this with
+ *  three strategies in order of reliability:
+ *
+ *  A) ag-Grid JS API — reads the in-memory row model directly, no scrolling.
+ *     Tries __agGridMetaData__ (ag-Grid v27+) and Angular __ngContext__ (v14+).
+ *
+ *  B) Scroll-harvest — slowly scrolls the ag-Grid body-viewport and collects
+ *     rows at each stop, deduplicating by row-index.  Uses col-id attributes
+ *     plus header text for semantic column mapping (not positional), so the
+ *     "date in column 0" layout is handled correctly regardless of column order.
+ *
+ *  C) Plain <table> fallback — last resort if ag-Grid is not present.
+ */
 async function extractGridRows(page: any): Promise<Array<{
   caseNumber: string;
   caseTitle: string;
@@ -324,36 +360,219 @@ async function extractGridRows(page: any): Promise<Array<{
   reliefType: string;
   amount: string;
 }>> {
+
+  // ── Strategy A: ag-Grid JS API ──────────────────────────────────────────────
+  const apiResult = await page.evaluate(() => {
+    try {
+      const wrappers = document.querySelectorAll('.ag-root-wrapper');
+      if (!wrappers.length) return null;
+      const wrapper = wrappers[wrappers.length - 1] as any;
+
+      let api: any = null;
+
+      // Path 1: ag-Grid v27+ __agGridMetaData__
+      const meta = wrapper.__agGridMetaData__;
+      if (meta) api = meta.gridApi || meta.api;
+
+      // Path 2: Angular 14+ __ngContext__ (LView array) — walk up from wrapper
+      if (!api) {
+        let el: any = wrapper;
+        for (let depth = 0; depth < 12 && el && !api; depth++) {
+          const ctx = el.__ngContext__;
+          if (ctx) {
+            const arr = Array.isArray(ctx) ? ctx : [ctx];
+            for (const item of arr) {
+              if (item?.gridOptions?.api?.forEachNode) { api = item.gridOptions.api; break; }
+              if (item?.api?.forEachNode)              { api = item.api;             break; }
+            }
+          }
+          el = el.parentElement;
+        }
+      }
+
+      if (!api?.forEachNode) return null;
+
+      const rawRows: any[] = [];
+      api.forEachNode((node: any) => {
+        if (node.data) rawRows.push(node.data);
+      });
+      return rawRows.length > 0 ? rawRows : null;
+    } catch { return null; }
+  });
+
+  if (apiResult) {
+    // Semantic mapping: look for known field names in the row object
+    const mapField = (d: Record<string, any>, patterns: string[]): string => {
+      const key = Object.keys(d).find(k =>
+        patterns.some(p => k.toLowerCase().includes(p.toLowerCase()))
+      );
+      return key ? String(d[key] ?? '').trim() : '';
+    };
+    return (apiResult as Record<string, any>[])
+      .map(d => ({
+        caseNumber:    mapField(d, ['casenum','case_num','מספר','number']) || String(Object.values(d)[0] ?? ''),
+        caseTitle:     mapField(d, ['title','name','subject','שם','נושא','parties']),
+        openDate:      mapField(d, ['date','open','filed','תאריך']),
+        court:         mapField(d, ['court','tribunal','בית','מחוז']),
+        group:         mapField(d, ['group','קבוצה','category']),
+        legalQuestion: mapField(d, ['legal','question','שאלה']),
+        reliefType:    mapField(d, ['relief','remedy','סעד']),
+        amount:        mapField(d, ['amount','sum','סכום','שווי']),
+      }))
+      .filter(r => r.caseNumber || r.caseTitle);
+  }
+
+  // ── Strategy B: Scroll-harvest with col-id semantic mapping ────────────────
+  // ag-Grid virtual scroll only renders rows that are inside the viewport's
+  // visible area.  Scrolling the .ag-body-viewport in small increments forces
+  // each row into view so it gets rendered and we can read it.
+  //
+  // We deduplicate by row-index attribute so each row is counted once even if
+  // it was visible at multiple scroll positions.
+  //
+  // Column detection uses col-id + header-cell text (NOT positional index),
+  // which is why the "date in column 0" bug is corrected here.
+  const scrollRows = await page.evaluate(() => {
+    return new Promise<any[]>(resolve => {
+      const grids = document.querySelectorAll('div.ag-root-wrapper');
+      const main  = (grids.length ? grids[grids.length - 1] : null) as Element | null;
+      if (!main) { resolve([]); return; }
+
+      // Build col-id → header-text map
+      const headerMap: Record<string, string> = {};
+      main.querySelectorAll('.ag-header-cell[col-id]').forEach((h: Element) => {
+        const id  = h.getAttribute('col-id') || '';
+        const txt = ((h as HTMLElement).innerText || h.textContent || '').trim();
+        if (id) headerMap[id] = txt;
+      });
+
+      const collected = new Map<string, Record<string, string>>(); // rowIndex → data
+
+      function harvest() {
+        main!.querySelectorAll('.ag-row').forEach((rowEl: Element) => {
+          const idx = rowEl.getAttribute('row-index') || rowEl.getAttribute('row-id') || '';
+          if (!idx || collected.has(idx)) return;
+          const data: Record<string, string> = {};
+          rowEl.querySelectorAll('.ag-cell[col-id]').forEach((c: Element) => {
+            const id = c.getAttribute('col-id') || '';
+            if (id) data[id] = ((c as HTMLElement).innerText || c.textContent || '').trim();
+          });
+          // Also capture cells without col-id by position
+          if (Object.keys(data).length === 0) {
+            rowEl.querySelectorAll('.ag-cell').forEach((c: Element, i: number) => {
+              data[`_pos${i}`] = ((c as HTMLElement).innerText || c.textContent || '').trim();
+            });
+          }
+          if (Object.keys(data).length > 0) collected.set(idx, data);
+        });
+      }
+
+      const vp = (main.querySelector('.ag-body-viewport') ||
+                  main.querySelector('.ag-center-cols-viewport') ||
+                  main) as HTMLElement;
+
+      harvest(); // collect rows already in view
+
+      const STEP = 120;
+      const MAX  = Math.max(vp.scrollHeight, 5000);
+      let   pos  = 0;
+
+      function step() {
+        harvest();
+        pos += STEP;
+        if (pos > MAX + 240) {
+          vp.scrollTop = 0;
+          resolve(Array.from(collected.entries()).map(([, d]) => ({ headerMap, data: d })));
+          return;
+        }
+        vp.scrollTop = pos;
+        setTimeout(step, 60);
+      }
+      vp.scrollTop = 0;
+      setTimeout(step, 120);
+    });
+  });
+
+  if (scrollRows.length > 0) {
+    return scrollRows
+      .map((item: any) => {
+        const { headerMap, data } = item as {
+          headerMap: Record<string, string>;
+          data:      Record<string, string>;
+        };
+
+        let caseNumber = '', caseTitle = '', openDate = '', court = '',
+            group = '', legalQuestion = '', reliefType = '', amount = '';
+
+        for (const [colId, val] of Object.entries(data)) {
+          if (!val) continue;
+          const h = (headerMap[colId] || colId).toLowerCase();
+
+          // Date: DD/MM/YYYY value OR header contains תאריך/date
+          if (!openDate && (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(val) || h.includes('תאריך') || h.includes('date'))) {
+            openDate = val; continue;
+          }
+          // Case title: contains "נ'" separator (plaintiff vs defendant)
+          if (!caseTitle && /נ['״׳׳’]/.test(val)) {
+            caseTitle = val; continue;
+          }
+          // Case number: Israeli case number pattern "letters digits-MM-YY" or "digits-MM-YY"
+          if (!caseNumber && (/\d{4,}-\d{2}-\d{2,}/.test(val) || h.includes('מספר') || h.includes('תיק'))) {
+            caseNumber = val; continue;
+          }
+          // Court
+          if (!court && (h.includes('בית') || h.includes('court') || h.includes('מחוז'))) {
+            court = val; continue;
+          }
+          // Group / category
+          if (!group && (h.includes('קבוצה') || h.includes('group') || h.includes('category'))) {
+            group = val; continue;
+          }
+          // Claim amount
+          if (!amount && (h.includes('סכום') || h.includes('amount') || /₪/.test(val))) {
+            amount = val; continue;
+          }
+        }
+
+        // Second pass for columns we missed (e.g. positional _pos* keys)
+        if (!caseNumber || !caseTitle) {
+          for (const val of Object.values(data)) {
+            if (!val) continue;
+            if (!openDate && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(val))  { openDate   = val; continue; }
+            if (!caseTitle && /נ['״׳׳’]/.test(val))         { caseTitle  = val; continue; }
+            if (!caseNumber && /\d{4,}-\d{2}-\d{2,}/.test(val))       { caseNumber = val; continue; }
+          }
+        }
+
+        return { caseNumber, caseTitle, openDate, court, group, legalQuestion, reliefType, amount };
+      })
+      .filter(r => r.caseNumber || r.caseTitle);
+  }
+
+  // ── Strategy C: Plain <table> fallback ──────────────────────────────────────
   return page.evaluate(() => {
     const rows: any[] = [];
-    // ag-Grid renders .ag-row elements across multiple .ag-root-wrapper containers
-    // on this page (search-filter grids + the main results grid). The last wrapper
-    // is the main data grid — scoping to it avoids pulling phantom rows from
-    // auxiliary grids that may appear above.
-    const grids = document.querySelectorAll('div.ag-root-wrapper');
-    const mainGrid = grids.length ? grids[grids.length - 1] : document;
-    const agRows = mainGrid.querySelectorAll('.ag-row');
+    const lastTable = [...document.querySelectorAll('table')].pop();
+    if (lastTable) {
+      [...lastTable.querySelectorAll('tr')].slice(1).forEach((tr: Element) => {
+        const t = [...tr.querySelectorAll('td, th')]
+          .map(c => ((c as HTMLElement).innerText || c.textContent || '').trim());
+        if (t.length < 2 || !t.some(v => v.length > 3)) return;
 
-    for (const row of agRows) {
-      const cells = row.querySelectorAll('.ag-cell');
-      if (cells.length < 5) continue;
+        const dateIdx  = t.findIndex(v => /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(v));
+        const titleIdx = t.findIndex(v => /נ['״׳׳’]/.test(v));
+        const numIdx   = t.findIndex(v => /\d{4,}-\d{2}-\d{2,}/.test(v));
 
-      const cellTexts = Array.from(cells).map(c => (c.textContent || '').trim());
-      // Skip empty/header rows
-      if (!cellTexts[0] || cellTexts[0].length < 3) continue;
-
-      // Column order from the registry:
-      // 0: מספר תיק, 1: שם התיק, 2: תאריך פתיחה, 3: בית משפט,
-      // 4: קבוצה, 5: שאלה משפטית, 6: סעד מבוקש, 7: סכום תביעה
-      rows.push({
-        caseNumber:    cellTexts[0] || '',
-        caseTitle:     cellTexts[1] || '',
-        openDate:      cellTexts[2] || '',
-        court:         cellTexts[3] || '',
-        group:         cellTexts[4] || '',
-        legalQuestion: cellTexts[5] || '',
-        reliefType:    cellTexts[6] || '',
-        amount:        cellTexts[7] || '',
+        rows.push({
+          caseNumber:    t[numIdx   >= 0 ? numIdx   : 0] || '',
+          caseTitle:     t[titleIdx >= 0 ? titleIdx : 1] || '',
+          openDate:      t[dateIdx  >= 0 ? dateIdx  : 2] || '',
+          court:         t[3] || '',
+          group:         t[4] || '',
+          legalQuestion: t[5] || '',
+          reliefType:    t[6] || '',
+          amount:        t[7] || '',
+        });
       });
     }
     return rows;

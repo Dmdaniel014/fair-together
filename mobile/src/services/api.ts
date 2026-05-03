@@ -848,3 +848,66 @@ export async function recordReferralClick(
     body:   JSON.stringify(deviceFingerprint ? { deviceFingerprint } : {}),
   });
 }
+
+// ── Live incubator cases (Explore "בהקמה" section) ───────────────────────────
+
+export interface LiveIncubatorCase {
+  id:                string;
+  title:             string;
+  defendantCompany:  string;
+  legalClaimType:    string;
+  damageEstimateNis: number;
+  estimatedAffected: string | null;
+  powerScore:        number | null;
+  status:            string;
+  goalMembers:       number;
+  createdAt:         string;
+  _count:            { members: number };
+}
+
+export async function getLiveCases(opts: {
+  limit?:  number;
+  offset?: number;
+} = {}): Promise<{ cases: LiveIncubatorCase[]; total: number }> {
+  const params = new URLSearchParams();
+  if (opts.limit  != null) params.set('limit',  String(opts.limit));
+  if (opts.offset != null) params.set('offset', String(opts.offset));
+  const qs = params.toString();
+  return apiFetch(`/api/cases/live${qs ? `?${qs}` : ''}`);
+}
+
+// ── Group chat ───────────────────────────────────────────────────────────────
+
+export interface ChatMessage {
+  id:               string;
+  caseId:           string;
+  userId:           string;
+  body:             string;
+  moderationStatus: string;
+  createdAt:        string;
+  user: {
+    id:      string;
+    profile: { displayName: string | null } | null;
+  };
+}
+
+export async function getCaseChatMessages(
+  caseId: string,
+  opts: { limit?: number; before?: string } = {},
+): Promise<{ messages: ChatMessage[]; total: number }> {
+  const params = new URLSearchParams();
+  if (opts.limit  != null) params.set('limit',  String(opts.limit));
+  if (opts.before != null) params.set('before', opts.before);
+  const qs = params.toString();
+  return apiFetch(`/api/cases/${caseId}/messages${qs ? `?${qs}` : ''}`);
+}
+
+export async function postCaseChatMessage(
+  caseId: string,
+  body:   string,
+): Promise<{ message: ChatMessage; piiStripped: string[] }> {
+  return apiFetch(`/api/cases/${caseId}/messages`, {
+    method: 'POST',
+    body:   JSON.stringify({ body }),
+  });
+}

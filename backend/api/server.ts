@@ -1518,9 +1518,25 @@ app.get('/api/cases/mine', requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+// ── Live incubator cases feed (for Explore tab "בהקמה" section) ──────────────
+// Declared BEFORE /api/cases/:id so "live" is not treated as an :id.
+app.get('/api/cases/live', async (req, res) => {
+  try {
+    const limit  = Math.min(Number(req.query.limit  ?? 20), 50);
+    const offset = Math.max(Number(req.query.offset ?? 0),  0);
+    const [cases, total] = await Promise.all([
+      withDbRetry(() => db.listLiveIncubatorCases({ limit, offset })),
+      withDbRetry(() => db.countLiveIncubatorCases()),
+    ]);
+    res.json({ cases, total, limit, offset });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? 'Internal error' });
+  }
+});
+
 // Public case detail. Only visible states (LIVE / GOAL_REACHED / LEGAL_ACTION)
 // are shown to non-owners; founder sees their own regardless of state.
-// Declared AFTER /api/cases/mine so Express matches the literal route first.
+// Declared AFTER /api/cases/mine and /api/cases/live so literals match first.
 app.get('/api/cases/:id', async (req: AuthRequest, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
@@ -1753,6 +1769,82 @@ app.post('/api/legal/threads/:id/escalate', requireAuth, async (req: AuthRequest
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err?.message ?? 'Internal error' });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  INCUBATOR GROUP CHAT — per-case group discussion
+//  PII is auto-sanitized before persistence (Israeli ID, CC, phone, email).
+// ════════════════════════════════════════════════════════════════════════════
+
+const chatMessageSchema = z.object({
+  body: z.string().trim().min(1).max(2000),
+});
+
+// GET  /api/cases/:id/messages   — fetch message history (members + founder only)
+app.get('/api/cases/:id/messages', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const kase = await withDbRetry(() => db.getIncubatorCase(req.params.id));
+    if (!kase) { res.status(404).json({ error: 'Case not found' }); return; }
+
+    // Only members, founder, or admin may read the chat.
+    const [role, membership] = await Promise.all([
+      withDbRetry(() => db.getUserRole(req.userId!)),
+      withDbRetry(() => prisma.caseMember.findUnique({
+        where: { caseId_userId: { caseId: req.params.id, userId: req.userId! } },
+        select: { id: true },
+      })),
+    ]);
+    const isAdmin   = role === 'ADMIN';
+    const isFounder = kase.founder?.id === req.userId;
+    const isMember  = !!membership;
+    if (!isAdmin && !isFounder && !isMember) {
+      res.status(403).json({ error: 'Only members can read the chat' }); return;
+    }
+
+    const before = typeof req.query.before === 'string' ? req.query.before : undefined;
+    const limit  = Math.min(Number(req.query.limit ?? 50), 100);
+    const messages = await withDbRetry(() =>
+      db.getCaseChatMessages(req.params.id, { limit, before }),
+    );
+    // Return in chronological order (oldest first for rendering)
+    res.json({ messages: messages.reverse(), total: messages.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? 'Internal error' });
+  }
+});
+
+// POST /api/cases/:id/messages   — send a chat message (PII auto-stripped)
+const chatLimit = rateLimit({ windowMs: 60_000, max: 30, name: 'chat' });
+app.post('/api/cases/:id/messages', requireAuth, chatLimit, async (req: AuthRequest, res) => {
+  try {
+    const parsed = chatMessageSchema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() }); return; }
+
+    // Sanitize PII before storing
+    const { sanitizePII } = await import('../skills/sanitizePII');
+    const { clean: sanitizedBody, hits: piiHits } = sanitizePII(parsed.data.body);
+
+    const msg = await withDbRetry(() =>
+      db.postCaseChatMessage({
+        caseId:  req.params.id,
+        userId:  req.userId!,
+        body:    sanitizedBody,
+        piiHits,
+      }),
+    );
+
+    if (piiHits.length > 0) {
+      console.log(`[chat] PII stripped for user ${req.userId} in case ${req.params.id}: ${piiHits.join(', ')}`);
+    }
+
+    res.status(201).json({ message: msg, piiStripped: piiHits });
+  } catch (err: any) {
+    const msg = String(err?.message ?? 'Internal error');
+    if (msg === 'CASE_NOT_FOUND') { res.status(404).json({ error: 'Case not found' }); return; }
+    if (msg === 'NOT_A_MEMBER')   { res.status(403).json({ error: 'Only members can post' }); return; }
+    if (msg === 'CASE_NOT_LIVE')  { res.status(409).json({ error: 'Case is not active' }); return; }
+    res.status(500).json({ error: msg });
   }
 });
 

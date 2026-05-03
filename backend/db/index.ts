@@ -140,8 +140,13 @@ export const db = {
     const totalPool = parseAmount(rawCase.claimAmount);
     const individualPayout = parseAmount(rawCase.individualAmount);
 
-    // Determine if this case has enough data to be user-ready
-    const hasMeaningfulData = !!(rawCase.summary || rawCase.affectedGroup || totalPool);
+    // Determine if this case has enough data to be user-ready.
+    // Quality thresholds — prevents single-word "כללי" or ₪1 totals from going live.
+    const meaningfulSummary  = !!(rawCase.summary       && rawCase.summary.trim().length  > 20);
+    const meaningfulElig     = !!(rawCase.affectedGroup && rawCase.affectedGroup.trim().length > 8
+                                  && rawCase.affectedGroup.trim().split(/\s+/).length > 1);
+    const meaningfulPool     = totalPool !== null && totalPool >= 50_000; // ≥ ₪50K
+    const hasMeaningfulData  = meaningfulSummary || meaningfulElig || meaningfulPool;
     const DEAD = ['DISMISSED', 'CLOSED'];
     const isReadyForUsers = hasMeaningfulData && !DEAD.includes(mappedStatus);
 
@@ -1504,6 +1509,92 @@ export const db = {
       data:  { status },
     });
   },
+
+  // ── Incubator Group Chat ──────────────────────────────────────────────────
+  // CaseChatMessage — group chat for each LIVE incubator case.
+  // PII must be sanitized by the caller BEFORE calling postCaseChatMessage.
+
+  async postCaseChatMessage(input: {
+    caseId:  string;
+    userId:  string;
+    body:    string;         // already PII-sanitized by server layer
+    piiHits: string[];       // audit log — which PII types were stripped
+  }) {
+    // Only members (or the founder) may post.
+    const membership = await prisma.caseMember.findUnique({
+      where: { caseId_userId: { caseId: input.caseId, userId: input.userId } },
+      select: { id: true },
+    });
+    const kase = await prisma.incubatorCase.findUnique({
+      where:  { id: input.caseId },
+      select: { founderUserId: true, status: true },
+    });
+    if (!kase) throw new Error('CASE_NOT_FOUND');
+    const isMember  = !!membership;
+    const isFounder = kase.founderUserId === input.userId;
+    if (!isMember && !isFounder) throw new Error('NOT_A_MEMBER');
+    if (!['LIVE', 'GOAL_REACHED', 'LEGAL_ACTION'].includes(kase.status)) throw new Error('CASE_NOT_LIVE');
+
+    return prisma.caseChatMessage.create({
+      data: {
+        caseId:  input.caseId,
+        userId:  input.userId,
+        body:    input.body,
+        // piiHits stored in a note-field — we reuse moderationStatus metadata:
+        // store as APPROVED if no PII, FLAGGED if PII was stripped (audit trail)
+        moderationStatus: input.piiHits.length > 0 ? 'FLAGGED' : 'APPROVED',
+      },
+      include: { user: { select: { id: true, profile: { select: { displayName: true } } } } },
+    });
+  },
+
+  async getCaseChatMessages(caseId: string, opts: {
+    limit?:  number;
+    before?: string; // ISO date cursor for pagination
+  } = {}) {
+    const where: any = { caseId };
+    if (opts.before) where.createdAt = { lt: new Date(opts.before) };
+    return prisma.caseChatMessage.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take:    opts.limit ?? 50,
+      include: {
+        user: { select: { id: true, profile: { select: { displayName: true } } } },
+      },
+    });
+  },
+
+  // ── Live incubator cases for Explore feed ────────────────────────────────
+  async listLiveIncubatorCases(opts: {
+    limit?: number;
+    offset?: number;
+  } = {}) {
+    return prisma.incubatorCase.findMany({
+      where:   { status: { in: ['LIVE', 'GOAL_REACHED', 'LEGAL_ACTION'] } },
+      orderBy: { createdAt: 'desc' },
+      take:    opts.limit  ?? 20,
+      skip:    opts.offset ?? 0,
+      select: {
+        id:               true,
+        title:            true,
+        defendantCompany: true,
+        legalClaimType:   true,
+        damageEstimateNis: true,
+        estimatedAffected: true,
+        powerScore:       true,
+        status:           true,
+        goalMembers:      true,
+        createdAt:        true,
+        _count:           { select: { members: true } },
+      },
+    });
+  },
+
+  async countLiveIncubatorCases(): Promise<number> {
+    return prisma.incubatorCase.count({
+      where: { status: { in: ['LIVE', 'GOAL_REACHED', 'LEGAL_ACTION'] } },
+    });
+  },
 };
 
 // ── Date parsing helper ──────────────────────────────────────────────────────
@@ -1516,13 +1607,33 @@ function parseDate(value?: string | null): Date | null {
 
 // ── Amount parsing helper ────────────────────────────────────────────────────
 
-function parseAmount(value?: string | null, maxVal = 9999999999): number | null {
+function parseAmount(value?: string | null, maxVal = 999_999_999_999): number | null {
   if (!value) return null;
-  // Remove commas, spaces, currency symbols, ₪
-  const cleaned = value.replace(/[,\s₪]/g, '').trim();
+  const v = value.trim();
+
+  // ── Hebrew multiplier patterns (must be checked BEFORE stripping text) ────
+  // Handles: "15.0 מיליון", "1.5 מיליארד", "500 אלף", "500 אלפי שקלים"
+  const miliardMatch = v.match(/([\d,.]+)\s*מיליארד/);
+  if (miliardMatch) {
+    const n = Number(miliardMatch[1].replace(/,/g, ''));
+    if (isFinite(n) && n > 0) { const r = Math.round(n * 1_000_000_000); return r <= maxVal ? r : null; }
+  }
+  const milionMatch = v.match(/([\d,.]+)\s*מיליון/);
+  if (milionMatch) {
+    const n = Number(milionMatch[1].replace(/,/g, ''));
+    if (isFinite(n) && n > 0) { const r = Math.round(n * 1_000_000); return r <= maxVal ? r : null; }
+  }
+  const elefMatch = v.match(/([\d,.]+)\s*(?:אלף|אלפי)/);
+  if (elefMatch) {
+    const n = Number(elefMatch[1].replace(/,/g, ''));
+    if (isFinite(n) && n > 0) { const r = Math.round(n * 1_000); return r <= maxVal ? r : null; }
+  }
+
+  // ── Plain numeric (strip commas, spaces, ₪, quotes) ───────────────────────
+  const cleaned = v.replace(/[,\s₪"׳]/g, '').trim();
   const num = Number(cleaned);
   if (!isFinite(num) || num <= 0) return null;
-  return num <= maxVal ? num : null; // skip values that overflow Decimal precision
+  return num <= maxVal ? num : null;
 }
 
 // Use shared mapStatus from types.ts (single source of truth)
